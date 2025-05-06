@@ -1,4 +1,4 @@
-# Official Implementations of "Provably Efficient RL under Episode-Wise Safety in Constrained MDPs with Linear Function Approximation" [Experiments in Section TODO]
+# Official Implementations of "Provably Efficient RL under Episode-Wise Safety in Constrained MDPs with Linear Function Approximation" 
 
 * See the implementation in [Experiment.ipynb](Experiment.ipynb).
 

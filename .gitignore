@@ -3,7 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-results.pkl
+*.pkl
 
 # C extensions
 *.so

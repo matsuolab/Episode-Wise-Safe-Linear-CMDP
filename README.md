@@ -2,8 +2,6 @@
 
 * See the implementation in [Experiment.ipynb](Experiment.ipynb).
 
-<img src="results.png">
-
 
 ## Requirements
 
@@ -14,3 +12,4 @@ uv sync
 ## Run Experiments and Plot the results
 
 Run all the cells in [Experiment.ipynb](Experiment.ipynb).
+The results will be saved as "results-random.pdf" for the synthetic env and "results-streaming.pdf" for the streaming env.

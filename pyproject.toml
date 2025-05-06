@@ -1,0 +1,15 @@
+[project]
+name = "linear-cmdp-zero-vio-experiment"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "chex>=0.1.89",
+    "jax>=0.6.0",
+    "jupyter>=1.1.1",
+    "matplotlib>=3.10.1",
+    "notebook>=7.4.1",
+    "numpy>=2.2.5",
+    "ray>=2.45.0",
+]

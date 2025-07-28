@@ -12,4 +12,5 @@ dependencies = [
     "notebook>=7.4.1",
     "numpy>=2.2.5",
     "ray>=2.45.0",
+    "tqdm>=4.67.1",
 ]

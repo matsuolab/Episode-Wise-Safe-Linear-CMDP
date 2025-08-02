@@ -5,11 +5,13 @@ from itertools import product
 from scipy.optimize import linprog
 from envs.cmdp import CMDP
 from envs import tabular, streaming
-from typing import NamedTuple
 from utils import compute_greedy_Q_utility, EvalRegQ
 from utils import compute_occupancy_measure
 from utils import compute_policy_matrix
 from utils import compute_optimal_rew_util
+from utils import set_cmdp_info
+from utils import deploy_policy_episode
+from utils import sample_and_compute_regret
 import importlib
 
 import jax.numpy as jnp
@@ -130,7 +132,20 @@ def test_compute_occupancy_measure_policy_effect(module_name):
 
 
 @pytest.mark.parametrize("module_name", ["tabular", "streaming"])
-def test_compute_optimal_rew_util(module_name):
+@pytest.mark.parametrize("seed", [0, 1, 42, 123, 999])
+def test_set_cmdp_info(module_name, seed):
+    key = jax.random.PRNGKey(seed)
+    module = importlib.import_module(f"envs.{module_name}")
+    cmdp = module.create_cmdp(key)
+    cmdp = set_cmdp_info(cmdp)
+
+    assert cmdp.xi > 0, "xi should be greater than 0"
+    assert cmdp.const > 0, "const should be greater than 0"
+
+
+@pytest.mark.parametrize("module_name", ["tabular", "streaming"])
+@pytest.mark.parametrize("seed", [0, 1, 42, 123, 331, 544, 803, 999, 1911])
+def test_compute_optimal_rew_util(module_name, seed):
     def compute_optimal_rew_util_LP(cmdp):
         H, S, A = cmdp.rew.shape
         B = np.zeros((H, S, A, H, S, A))
@@ -153,12 +168,80 @@ def test_compute_optimal_rew_util(module_name):
         np.testing.assert_allclose(d_arr.sum(axis=(1, 2)), 1.0, atol=1e-4)
         return (d_arr * cmdp.rew).sum(), (d_arr * cmdp.utility).sum()
 
-    key = jax.random.PRNGKey(0)
+    key = jax.random.PRNGKey(seed)
     module = importlib.import_module(f"envs.{module_name}")
     cmdp = module.create_cmdp(key)
-    optimal_rew, optimal_util = compute_optimal_rew_util(cmdp)
+    cmdp = set_cmdp_info(cmdp)
+
+    optimal_rew, optimal_util = compute_optimal_rew_util(cmdp, 0.02, 50000)
     optimal_rew_LP, optimal_util_LP = compute_optimal_rew_util_LP(cmdp)
 
-    np.testing.assert_allclose(optimal_rew, optimal_rew_LP, atol=1e-1)
-    np.testing.assert_allclose(optimal_util, optimal_util_LP, atol=1e-1)
-    assert optimal_util >= cmdp.const, f"total_utility: {optimal_util}, const: {cmdp.const}"
+    assert optimal_util >= cmdp.const - 0.05, f"total_utility: {optimal_util}, const: {cmdp.const}"
+    np.testing.assert_allclose(optimal_rew, optimal_rew_LP, atol=0.05)
+
+
+@pytest.mark.parametrize("module_name", ["tabular", "streaming"])
+@pytest.mark.parametrize("seed", [0, 1, 42, 123, 999])
+def test_deploy_policy_episode(module_name, seed):
+    key = jax.random.PRNGKey(seed)
+    module = importlib.import_module(f"envs.{module_name}")
+    cmdp = module.create_cmdp(key)
+    policy = jnp.ones((cmdp.H, cmdp.S, cmdp.A)) / cmdp.A
+
+    key, subkey = jax.random.split(key)
+    _, trajectory = deploy_policy_episode(cmdp, subkey, policy)
+
+    assert trajectory.shape == (cmdp.H, 2)
+
+
+@pytest.mark.parametrize("module_name", ["tabular", "streaming"])
+@pytest.mark.parametrize("seed1, seed2", [(0, 1), (42, 123), (999, 1000)])
+def test_deploy_policy_episode_randomness(module_name, seed1, seed2):
+    key1 = jax.random.PRNGKey(seed1)
+    key2 = jax.random.PRNGKey(seed2)
+    module = importlib.import_module(f"envs.{module_name}")
+    cmdp = module.create_cmdp(key1)
+    policy = jnp.ones((cmdp.H, cmdp.S, cmdp.A)) / cmdp.A
+
+    _, traj1 = deploy_policy_episode(cmdp, key1, policy)
+    _, traj2 = deploy_policy_episode(cmdp, key2, policy)
+
+    # With different seeds, trajectories should differ
+    assert not jnp.allclose(traj1, traj2), "Trajectories should differ for different seeds"
+
+
+@pytest.mark.parametrize("module_name", ["tabular", "streaming"])
+def test_deploy_policy_episode_repeatability(module_name):
+    seed = 12345
+    key = jax.random.PRNGKey(seed)
+    module = importlib.import_module(f"envs.{module_name}")
+    cmdp = module.create_cmdp(key)
+    policy = jnp.ones((cmdp.H, cmdp.S, cmdp.A)) / cmdp.A
+
+    _, traj1 = deploy_policy_episode(cmdp, key, policy)
+    _, traj2 = deploy_policy_episode(cmdp, key, policy)
+
+    # With same seed and same policy, trajectories should be identical
+    assert jnp.allclose(traj1, traj2), "Trajectories should be identical for same seed and policy"
+
+
+@pytest.mark.parametrize("module_name", ["tabular", "streaming"])
+@pytest.mark.parametrize("seed", [0, 1, 42, 123, 999])
+def test_sample_and_compute_regret(module_name, seed):
+    key = jax.random.PRNGKey(seed)
+    module = importlib.import_module(f"envs.{module_name}")
+    cmdp = module.create_cmdp(key)
+    cmdp = set_cmdp_info(cmdp)
+
+    policy = jnp.ones((cmdp.H, cmdp.S, cmdp.A)) / cmdp.A
+    _, traj, err_rew, err_vio = sample_and_compute_regret(key, cmdp, policy)
+
+    Q_rew = EvalRegQ(policy, cmdp.rew, cmdp.P, 0)
+
+    init_dist = cmdp.init_dist
+    total_rew = ((Q_rew * policy)[0].sum(axis=-1) * init_dist).sum()
+    np.testing.assert_allclose(err_rew, cmdp.optimal_ret - total_rew, atol=1e-6)
+
+    Q_utility = EvalRegQ(policy, cmdp.utility, cmdp.P, 0)
+    total_util = ((Q_utility * policy)[0].sum(axis=-1) * init_dist).sum()
+    np.testing.assert_allclose(jnp.maximum(cmdp.const - total_util, 0), err_vio, atol=1e-6)

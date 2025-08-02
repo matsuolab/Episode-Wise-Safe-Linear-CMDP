@@ -47,7 +47,7 @@ def create_cmdp(key: PRNGKey) -> CMDP:
     x0 = jax.random.randint(key, (), 0, S)
     init_dist = init_dist.at[x0].set(1.0)
 
-    cmdp = CMDP(S_set, A_set, H, d, phi, rew, utility, const, P, init_dist, xi=xi)
+    cmdp = CMDP(S_set, A_set, H, d, phi, rew, utility, const, const_scale, P, init_dist, xi=xi)
     return cmdp
 
 

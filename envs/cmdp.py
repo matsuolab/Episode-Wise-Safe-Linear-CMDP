@@ -11,6 +11,7 @@ class CMDP(NamedTuple):
     rew: jnp.array  # reward function
     utility: jnp.array  # reward for constraint
     const: float  # constraint threshold
+    const_scale: float  # scaling factor for constraint threshold. See set_cmdp_info function in utils.py
     P: jnp.array  # transition probability kernel
     init_dist: jnp.array  # initial distribution
     xi: float  # safety parameter

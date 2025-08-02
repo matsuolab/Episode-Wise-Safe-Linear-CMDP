@@ -2,6 +2,7 @@ from scipy.optimize import linprog
 from itertools import product
 from functools import partial
 from envs.cmdp import CMDP
+from jax.random import PRNGKey
 import jax
 import jax.numpy as jnp
 import chex
@@ -119,8 +120,26 @@ def compute_occupancy_measure(cmdp: CMDP, policy: jnp.ndarray):
     return occ
 
 
+def set_cmdp_info(cmdp: CMDP) -> CMDP:
+    """Set CMDP information, such as optimal policy, constraint threshold, etc."""
+    greedy_Q = compute_greedy_Q_utility(cmdp)
+    safe_policy = compute_greedy_policy(greedy_Q)
+    maximum_utility = (greedy_Q).max(axis=-1)[0] @ cmdp.init_dist
+    const = maximum_utility * cmdp.const_scale
+    xi = maximum_utility - const
+
+    # Set safety related parameters
+    cmdp = cmdp._replace(const=const, xi=xi, safe_policy=safe_policy)
+
+    # set the optimal policy
+    total_rew, _ = compute_optimal_rew_util(cmdp)
+ 
+    cmdp = cmdp._replace(optimal_ret=total_rew)
+    return cmdp
+
+
 @jax.jit
-def compute_optimal_rew_util(cmdp: CMDP, lr: float = 0.05, iter_length: int = 500):
+def compute_optimal_rew_util(cmdp: CMDP, lr: float = 0.02, iter_length: int = 50000):
     # Compute the optimal policy using Lagrange method
     H, S, A = cmdp.rew.shape
 
@@ -142,3 +161,62 @@ def compute_optimal_rew_util(cmdp: CMDP, lr: float = 0.05, iter_length: int = 50
     optimal_rew = (avg_occ * cmdp.rew).sum()
     optimal_util = (avg_occ * cmdp.utility).sum()
     return optimal_rew, optimal_util
+
+
+@jax.jit
+def deploy_policy_episode(cmdp: CMDP, key: PRNGKey, policy: jnp.array):
+    """ collect data through interaction to the cmdp 
+    Args:
+        cmdp (CMDP)
+        H (int)
+        key (PRNGKey)
+        policy (jnp.ndarray)
+
+    Returns:
+        new_key (PRNGKey)
+        traj (jnp.ndarray): (H x 3) collected trajectory H x (sa, s')
+    """
+    H, S, A, S = cmdp.P.shape
+    chex.assert_shape(policy, (H, S, A))
+
+    def body_fn(h, args):
+        key, s, traj = args
+        key, new_key = jax.random.split(key)
+        act = jax.random.choice(new_key, A, p=policy[h, s])
+
+        # sample next state
+        key, new_key = jax.random.split(key)
+        next_s = jax.random.choice(new_key, cmdp.S_set, p=cmdp.P[h, s, act])
+
+        sa = s * A + act
+        traj = traj.at[h].add(jnp.array([sa, next_s]))
+        return key, next_s, traj
+
+    key, init_key = jax.random.split(key)
+    init_s = jax.random.choice(init_key, S, p=cmdp.init_dist)
+    traj= jnp.zeros((H, 2), dtype=jnp.int32)  # H x (sa, s')
+    args = key, init_s, traj
+    key, _, traj = jax.lax.fori_loop(0, H, body_fn, args)
+    return key, traj
+
+
+@jax.jit
+def sample_and_compute_regret(key, cmdp: CMDP, policy):
+    """Deploy a policy and compute the regret"""
+    # sample data and update visitation counter
+    H, S, A, S = cmdp.P.shape
+
+    key, init_key = jax.random.split(key)
+    init_s = jax.random.choice(init_key, S, p=cmdp.init_dist)
+    key, traj = deploy_policy_episode(cmdp, key, policy)
+
+    # compute temporal regret
+    Q_rew= EvalRegQ(policy, cmdp.rew, cmdp.P, 0)
+    Q_utility = EvalRegQ(policy, cmdp.utility, cmdp.P, 0)
+    init_dist = cmdp.init_dist
+    total_rew = ((Q_rew * policy)[0].sum(axis=-1) * init_dist).sum()
+    total_utility = ((Q_utility * policy)[0].sum(axis=-1) * init_dist).sum()
+    
+    err_rew = cmdp.optimal_ret - total_rew
+    err_vio = jnp.maximum(cmdp.const - total_utility, 0)
+    return key, traj, err_rew, err_vio

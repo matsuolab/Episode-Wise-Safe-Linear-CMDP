@@ -5,11 +5,10 @@ from envs.cmdp import CMDP
 import numpy as np
 
 
-buff = 20  # buffer size
+buff = 10  # buffer size
 S, A = buff+1, 2  # state and action space sizes
 d = S * A
 H = 10 
-K = 500000  # number of episodes
 const_scale = 0.6
 
 
@@ -75,6 +74,6 @@ def create_cmdp(key: PRNGKey) -> CMDP:
     init_dist = init_dist.at[0].set(1.0)
     np.testing.assert_allclose(init_dist.sum(axis=-1), 1, atol=1e-6)
 
-    cmdp = CMDP(S_set, A_set, H, d, phi, rew, utility, const, P, init_dist, xi=xi)
+    cmdp = CMDP(S_set, A_set, H, d, phi, rew, utility, const, const_scale, P, init_dist, xi=xi)
     return cmdp
 

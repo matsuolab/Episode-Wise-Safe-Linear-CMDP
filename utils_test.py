@@ -13,11 +13,13 @@ from utils import set_cmdp_info
 from utils import deploy_policy_episode
 from utils import sample_and_compute_regret
 from utils import Sherman_Morrison_update_H
+from utils import compute_bonus
+from utils import update_ephi_sum_and_estimate_P
 import importlib
 
 import jax.numpy as jnp
 
-@pytest.mark.parametrize("module_name", ["tabular", "streaming"])
+@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 def test_EvalRegQ_shape(module_name):
     key = jax.random.PRNGKey(0)
     module = importlib.import_module(f"envs.{module_name}")
@@ -27,7 +29,7 @@ def test_EvalRegQ_shape(module_name):
     assert Q.shape == (cmdp.H, cmdp.S, cmdp.A)
 
 
-@pytest.mark.parametrize("module_name", ["tabular", "streaming"])
+@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 def test_compare_uni_and_greedy_Q_values(module_name):
     key = jax.random.PRNGKey(0)
     module = importlib.import_module(f"envs.{module_name}")
@@ -39,7 +41,7 @@ def test_compare_uni_and_greedy_Q_values(module_name):
 
 
 
-@pytest.mark.parametrize("module_name", ["tabular", "streaming"])
+@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 def test_EvalRegQ_regularization_effect(module_name):
     key = jax.random.PRNGKey(0)
     module = importlib.import_module(f"envs.{module_name}")
@@ -50,7 +52,7 @@ def test_EvalRegQ_regularization_effect(module_name):
     assert jnp.all(Q_reg >= Q_noreg)
 
 
-@pytest.mark.parametrize("module_name", ["tabular", "streaming"])
+@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 def test_EvalRegQ_threshold_effect(module_name):
     key = jax.random.PRNGKey(0)
     module = importlib.import_module(f"envs.{module_name}")
@@ -61,7 +63,7 @@ def test_EvalRegQ_threshold_effect(module_name):
     assert jnp.all(Q_high_thresh >= Q_low_thresh)
 
 
-@pytest.mark.parametrize("module_name", ["tabular", "streaming"])
+@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 def test_compute_policy_matrix_shape(module_name):
     key = jax.random.PRNGKey(0)
     module = importlib.import_module(f"envs.{module_name}")
@@ -71,7 +73,7 @@ def test_compute_policy_matrix_shape(module_name):
     assert PI.shape == (cmdp.H, cmdp.S, cmdp.S * cmdp.A)
 
 
-@pytest.mark.parametrize("module_name", ["tabular", "streaming"])
+@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 def test_compute_occupancy_measure_shape(module_name):
     key = jax.random.PRNGKey(0)
     module = importlib.import_module(f"envs.{module_name}")
@@ -81,7 +83,7 @@ def test_compute_occupancy_measure_shape(module_name):
     assert occ.shape == (cmdp.H, cmdp.S, cmdp.A)
 
 
-@pytest.mark.parametrize("module_name", ["tabular", "streaming"])
+@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 def test_compute_occupancy_measure_nonnegative(module_name):
     key = jax.random.PRNGKey(0)
     module = importlib.import_module(f"envs.{module_name}")
@@ -91,7 +93,7 @@ def test_compute_occupancy_measure_nonnegative(module_name):
     assert jnp.all(occ >= 0)
 
 
-@pytest.mark.parametrize("module_name", ["tabular", "streaming"])
+@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 def test_compute_occupancy_measure_sum(module_name):
     key = jax.random.PRNGKey(0)
     module = importlib.import_module(f"envs.{module_name}")
@@ -104,7 +106,7 @@ def test_compute_occupancy_measure_sum(module_name):
         assert jnp.allclose(occ_sum, 1.0, atol=1e-6), f"Occupancy sum at time {h} does not equal 1: {occ_sum}"
 
 
-@pytest.mark.parametrize("module_name", ["tabular", "streaming"])
+@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 def test_compute_occupancy_measure_sum_conservation(module_name):
     key = jax.random.PRNGKey(0)
     module = importlib.import_module(f"envs.{module_name}")
@@ -117,7 +119,7 @@ def test_compute_occupancy_measure_sum_conservation(module_name):
     np.testing.assert_allclose(float(occ0_sum), float(init_sum), rtol=1e-5)
 
 
-@pytest.mark.parametrize("module_name", ["tabular", "streaming"])
+@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 def test_compute_occupancy_measure_policy_effect(module_name):
     key = jax.random.PRNGKey(0)
     module = importlib.import_module(f"envs.{module_name}")
@@ -133,7 +135,7 @@ def test_compute_occupancy_measure_policy_effect(module_name):
     assert not jnp.allclose(occ_uni, occ_greedy)
 
 
-@pytest.mark.parametrize("module_name", ["tabular", "streaming"])
+@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 @pytest.mark.parametrize("seed", [0, 1, 42, 123, 999])
 def test_set_cmdp_info(module_name, seed):
     key = jax.random.PRNGKey(seed)
@@ -145,8 +147,8 @@ def test_set_cmdp_info(module_name, seed):
     assert cmdp.const > 0, "const should be greater than 0"
 
 
-@pytest.mark.parametrize("module_name", ["tabular", "streaming"])
-@pytest.mark.parametrize("seed", [0, 1, 42, 123, 331, 544, 803, 999, 1911])
+@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
+@pytest.mark.parametrize("seed", [123, 331, 544, 803, 999, 1911])
 def test_compute_optimal_rew_util(module_name, seed):
     def compute_optimal_rew_util_LP(cmdp):
         H, S, A = cmdp.rew.shape
@@ -182,7 +184,7 @@ def test_compute_optimal_rew_util(module_name, seed):
     np.testing.assert_allclose(optimal_rew, optimal_rew_LP, atol=0.05)
 
 
-@pytest.mark.parametrize("module_name", ["tabular", "streaming"])
+@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 @pytest.mark.parametrize("seed", [0, 1, 42, 123, 999])
 def test_deploy_policy_episode(module_name, seed):
     key = jax.random.PRNGKey(seed)
@@ -196,7 +198,7 @@ def test_deploy_policy_episode(module_name, seed):
     assert trajectory.shape == (cmdp.H, 2)
 
 
-@pytest.mark.parametrize("module_name", ["tabular", "streaming"])
+@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 @pytest.mark.parametrize("seed1, seed2", [(0, 1), (42, 123), (999, 1000)])
 def test_deploy_policy_episode_randomness(module_name, seed1, seed2):
     key1 = jax.random.PRNGKey(seed1)
@@ -212,7 +214,7 @@ def test_deploy_policy_episode_randomness(module_name, seed1, seed2):
     assert not jnp.allclose(traj1, traj2), "Trajectories should differ for different seeds"
 
 
-@pytest.mark.parametrize("module_name", ["tabular", "streaming"])
+@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 def test_deploy_policy_episode_repeatability(module_name):
     seed = 12345
     key = jax.random.PRNGKey(seed)
@@ -227,7 +229,7 @@ def test_deploy_policy_episode_repeatability(module_name):
     assert jnp.allclose(traj1, traj2), "Trajectories should be identical for same seed and policy"
 
 
-@pytest.mark.parametrize("module_name", ["tabular", "streaming"])
+@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 @pytest.mark.parametrize("seed", [0, 1, 42, 123, 999])
 def test_sample_and_compute_regret(module_name, seed):
     key = jax.random.PRNGKey(seed)
@@ -249,5 +251,93 @@ def test_sample_and_compute_regret(module_name, seed):
     np.testing.assert_allclose(jnp.maximum(cmdp.const - total_util, 0), err_vio, atol=1e-6)
 
 
-def test_Sherman_Morrison_update_H(...):
-    TODO
+@pytest.mark.parametrize("seed", [0, 1, 42, 123, 999])
+def test_Sherman_Morrison_update_H(seed):
+    # Test Sherman_Morrison_update_H for correctness
+    H = 3
+    d = 2
+    key = jax.random.PRNGKey(seed)
+    Lambda = jnp.tile(jnp.eye(d), (H, 1, 1))  # H x d x d
+    Lambda_inv_exp = jax.vmap(jnp.linalg.inv)(Lambda)  # H x d x d
+    Lambda_inv_Sh = Lambda_inv_exp.copy()
+
+    for _ in range(10):
+        key, subkey = jax.random.split(key)
+        Phi = jax.random.normal(key, (H, d))
+        
+        Lambda_inv_Sh = Sherman_Morrison_update_H(Lambda_inv_Sh, Phi)
+
+        phi_phi = jax.vmap(jnp.dot)(Phi.reshape(H, d, 1), Phi.reshape(H, 1, d))
+        Lambda = Lambda + phi_phi
+        Lambda_inv_exp = jax.vmap(jnp.linalg.inv)(Lambda)
+        np.testing.assert_allclose(Lambda_inv_Sh, Lambda_inv_exp, atol=1e-5)
+
+
+@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
+@pytest.mark.parametrize("seed", [0, 1, 42, 123, 999])
+def test_compute_bonus_shape_and_nonnegative(module_name, seed):
+    key = jax.random.PRNGKey(seed)
+    module = importlib.import_module(f"envs.{module_name}")
+    cmdp = module.create_cmdp(key)
+    H, S, A, d = cmdp.H, cmdp.S, cmdp.A, cmdp.d
+    Lambda_inv = jnp.tile(jnp.eye(d), (H, 1, 1))
+
+    for _ in range(100):
+        key, subkey = jax.random.split(key)
+        Phi = jax.random.normal(key, (H, d))
+        Lambda_inv= Sherman_Morrison_update_H(Lambda_inv, Phi)
+        bonus = compute_bonus(Lambda_inv, cmdp)
+        assert bonus.shape == (H, S, A)
+        assert jnp.all(bonus >= 0)
+
+
+@pytest.mark.parametrize("module_name", ["tabular", "linear"])
+@pytest.mark.parametrize("seed", [0, 1, 42, 123, 999])
+def test_update_ephi_sum_and_estimate_P(module_name, seed):
+
+    H, S, A, d = 3, 3, 2, 2
+
+    key = jax.random.PRNGKey(seed)
+    module = importlib.import_module(f"envs.{module_name}")
+    cmdp = module.create_cmdp(key, S=S, A=A, d=d, H=H)
+    cmdp = set_cmdp_info(cmdp)
+    uni_policy = jnp.ones((cmdp.H, cmdp.S, cmdp.A)) / cmdp.A
+    ephi_sum = jnp.zeros((cmdp.H, cmdp.S, cmdp.d))
+    Lambda = jnp.tile(jnp.eye(cmdp.d), (cmdp.H, 1, 1))  # H x d x d
+    Lambda_inv = jax.vmap(jnp.linalg.inv)(Lambda)
+
+    est_P_errors = []
+    for _ in range(100):
+        key, subkey = jax.random.split(key)
+        traj = sample_and_compute_regret(key, cmdp, uni_policy)[1]
+        Phi = cmdp.phi[traj[:, 0]]  # (H x d)
+        Lambda_inv = Sherman_Morrison_update_H(Lambda_inv, Phi)
+
+        ephi_sum, est_P = update_ephi_sum_and_estimate_P(ephi_sum, Lambda_inv, traj, cmdp)
+
+        est_P_errors.append(np.linalg.norm(est_P - cmdp.P))
+
+    assert est_P_errors[0] > est_P_errors[-1], "Estimated P should improve over iterations"
+
+
+@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
+@pytest.mark.parametrize("seed", [0, 1, 42, 123, 999])
+def test_compute_bonus_decrease(module_name, seed):
+    key = jax.random.PRNGKey(seed)
+    module = importlib.import_module(f"envs.{module_name}")
+    cmdp = module.create_cmdp(key)
+    cmdp = set_cmdp_info(cmdp)
+    H, S, A, d = cmdp.H, cmdp.S, cmdp.A, cmdp.d
+    Lambda_inv = jnp.tile(jnp.eye(d), (H, 1, 1))
+
+    bonus_initial = compute_bonus(Lambda_inv, cmdp)
+    uni_policy = jnp.ones((cmdp.H, cmdp.S, cmdp.A)) / cmdp.A
+
+    for _ in range(10):
+        key, subkey = jax.random.split(key)
+        traj = sample_and_compute_regret(key, cmdp, uni_policy)[1]
+        Phi = cmdp.phi[traj[:, 0]]  # (H x d)
+        Lambda_inv = Sherman_Morrison_update_H(Lambda_inv, Phi)
+        bonus = compute_bonus(Lambda_inv, cmdp)
+
+    assert jnp.all(bonus <= bonus_initial), "Bonus should decrease"

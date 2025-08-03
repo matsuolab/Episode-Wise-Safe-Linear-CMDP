@@ -49,7 +49,7 @@ def compute_softmax_pol(bonus: jnp.ndarray, cmdp: CMDP, ent_coef: float, lam: fl
 
 
 @jax.jit
-def bisection_search_lam(cmdp: CMDP, lam_range: jnp.ndarray, bonus: jnp.ndarray, ent_coef: float, Cr: float, Cd: float, Cu: float, Bd: float, Clam: float, iter_length: int) -> jnp.ndarray:
+def bisection_search_lam(cmdp: CMDP, bonus: jnp.ndarray, ent_coef: float, Cr: float, Cd: float, Cu: float, Bd: float, Clam: float, iter_length: int) -> jnp.ndarray:
     def body_fn(_, lam_range):
         lam_low, lam_high = lam_range
         mid_lam = (lam_low + lam_high) / 2
@@ -64,5 +64,4 @@ def bisection_search_lam(cmdp: CMDP, lam_range: jnp.ndarray, bonus: jnp.ndarray,
         return next_lam_range
 
     lam_range = jax.lax.fori_loop(0, iter_length, body_fn, jnp.array((0.0, Clam), dtype=jnp.float32))
-    _, pol = compute_softmax_pol(bonus, cmdp, ent_coef, lam_range[1], Cr, Cd, Cu, Bd)
-    return pol
+    return lam_range

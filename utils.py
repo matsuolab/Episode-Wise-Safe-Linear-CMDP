@@ -247,3 +247,28 @@ def Sherman_Morrison_update_H(Lambda_inv: jnp.ndarray, phi: jnp.ndarray) -> jnp.
     numerator = Lambda_inv @ phi @ phi.T @ Lambda_inv  # (d, d)
     denominator = 1.0 + (phi.T @ Lambda_inv @ phi)[0, 0]  # scalar
     return Lambda_inv - numerator / denominator
+
+
+@jax.jit
+def compute_bonus(Lambda_inv: jnp.ndarray, cmdp: CMDP) -> jnp.ndarray:
+    H, S, A = cmdp.rew.shape
+    phi_Lambda_inv = jnp.einsum('kd,hde->hke', cmdp.phi, Lambda_inv)
+    bonus = jnp.einsum('hkd,kd->hk', phi_Lambda_inv, cmdp.phi).reshape(H, S, A)
+    bonus = jnp.sqrt(bonus)
+    return bonus
+
+
+@jax.jit
+def update_ephi_sum_and_estimate_P(ephi_sum: jnp.ndarray, Lambda_inv: jnp.ndarray, traj: jnp.ndarray, cmdp: CMDP) -> jnp.ndarray:
+    H, S, A = cmdp.rew.shape
+
+    @jax.vmap
+    def update_ephi_sum(ephi_sum, traj):
+        sa, ns = traj
+        ephi_sum = ephi_sum.at[ns].add(cmdp.phi[sa])
+        return ephi_sum
+
+    ephi_sum = update_ephi_sum(ephi_sum, traj)
+    mu = ephi_sum @ Lambda_inv
+    est_P = jnp.einsum('hsd,kd->hks', mu, cmdp.phi).reshape(H, S, A, S)
+    return ephi_sum, est_P

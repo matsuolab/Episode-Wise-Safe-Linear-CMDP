@@ -5,14 +5,7 @@ from envs.cmdp import CMDP
 import numpy as np
 
 
-S, A = 10, 3
-d = S * A
-H = 5
-K = 100000  # number of episodes
-const_scale = 0.5
-
-
-def create_cmdp(key: PRNGKey) -> CMDP:
+def create_cmdp(key: PRNGKey, S: int=10, A: int=3, H: int=5, const_scale: float=0.5, **args) -> CMDP:
     """Randomly generate synthetic CMDP instance."""
     const = 0  # dummy
     xi = 0  # dummy

@@ -29,6 +29,17 @@ def compute_greedy_Q_utility(cmdp: CMDP):
 
 
 @jax.jit
+def compute_Q_h(Q_nh: jnp.ndarray, pol_nh: jnp.ndarray, bonus_h: jnp.ndarray, rew_h: jnp.ndarray, P_h: jnp.ndarray, ent_coef: float, thresh: float) -> jnp.ndarray:
+    S, A = rew_h.shape
+    Q_nh_reg = Q_nh + ent_coef * jax.scipy.special.entr(pol_nh)
+    V_nh = (pol_nh * Q_nh_reg).sum(axis=1)
+    next_v = bonus_h + P_h @ V_nh
+    next_v = jnp.maximum(jnp.minimum(next_v, thresh), 0)
+    chex.assert_shape(next_v, (S, A))
+    return rew_h + next_v 
+
+
+@jax.jit
 def EvalRegQ(policy: jnp.ndarray, rew: jnp.ndarray, P: jnp.ndarray, ent_coef: float, thresh_coef: float = 1.0) -> jnp.ndarray:
     """ Compute value function
     Args:
@@ -46,13 +57,10 @@ def EvalRegQ(policy: jnp.ndarray, rew: jnp.ndarray, P: jnp.ndarray, ent_coef: fl
     def backup(i, args):
         policy_Q= args
         h = H - i - 1
-        Q = policy_Q[h+1] + ent_coef * jax.scipy.special.entr(policy[h+1])
-        V = (policy[h+1] * Q).sum(axis=1)
-        next_v = P[h] @ V
-        chex.assert_shape(next_v, (S, A))
-        policy_Q = policy_Q.at[h].set(rew[h] + next_v)
-        min_thresh = thresh_coef * (1 + ent_coef * jnp.log(A)) * (H - h)
-        policy_Q = jnp.maximum(jnp.minimum(policy_Q, min_thresh), 0)
+        thresh = thresh_coef * (1 + ent_coef * jnp.log(A)) * (H - h)
+
+        Q_h = compute_Q_h(policy_Q[h+1], policy[h+1], jnp.zeros((S, A)), rew[h], P[h], ent_coef, thresh)
+        policy_Q = policy_Q.at[h].set(Q_h)
         return policy_Q
 
     policy_Q= jnp.zeros((H+1, S, A))
@@ -220,3 +228,22 @@ def sample_and_compute_regret(key, cmdp: CMDP, policy):
     err_rew = cmdp.optimal_ret - total_rew
     err_vio = jnp.maximum(cmdp.const - total_utility, 0)
     return key, traj, err_rew, err_vio
+
+
+@jax.vmap
+def Sherman_Morrison_update_H(Lambda_inv: jnp.ndarray, phi: jnp.ndarray) -> jnp.ndarray:
+    """Update the inverse of the Lambda_matrix using the Sherman-Morrison formula.
+    Due to the vmap, the input Lambda_inv is expected to be of shape (H x d x d) and phi of shape (H x d).
+    
+    Args:
+        Lambda_inv (jnp.ndarray): (d x d) matrix
+        phi (jnp.ndarray): d vector
+    
+    Return:
+        Lambda_inv (jnp.ndarray): (d x d)
+    """
+    # Sherman-Morrison formula: (A + u v^T)^(-1) = A_inv - (A_inv u v^T A_inv) / (1 + v^T A_inv u)
+    phi = phi.reshape(-1, 1)  # (d, 1)
+    numerator = Lambda_inv @ phi @ phi.T @ Lambda_inv  # (d, d)
+    denominator = 1.0 + (phi.T @ Lambda_inv @ phi)[0, 0]  # scalar
+    return Lambda_inv - numerator / denominator

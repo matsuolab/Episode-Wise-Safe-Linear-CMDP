@@ -12,6 +12,7 @@ from utils import compute_optimal_rew_util
 from utils import set_cmdp_info
 from utils import deploy_policy_episode
 from utils import sample_and_compute_regret
+from utils import Sherman_Morrison_update_H
 import importlib
 
 import jax.numpy as jnp
@@ -35,6 +36,7 @@ def test_compare_uni_and_greedy_Q_values(module_name):
     Q_uni = EvalRegQ(uni_policy, cmdp.utility, cmdp.P, 0.0)
     Q_greedy = compute_greedy_Q_utility(cmdp)
     assert jnp.all(Q_uni <= Q_greedy)
+
 
 
 @pytest.mark.parametrize("module_name", ["tabular", "streaming"])
@@ -245,3 +247,7 @@ def test_sample_and_compute_regret(module_name, seed):
     Q_utility = EvalRegQ(policy, cmdp.utility, cmdp.P, 0)
     total_util = ((Q_utility * policy)[0].sum(axis=-1) * init_dist).sum()
     np.testing.assert_allclose(jnp.maximum(cmdp.const - total_util, 0), err_vio, atol=1e-6)
+
+
+def test_Sherman_Morrison_update_H(...):
+    TODO

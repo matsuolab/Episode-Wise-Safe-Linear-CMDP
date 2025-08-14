@@ -14,35 +14,31 @@ from utils import deploy_policy_episode
 from utils import sample_and_compute_regret
 from utils import Sherman_Morrison_update_H
 from utils import compute_bonus
+from utils import compute_Q_h
 from utils import update_ephi_sum_and_estimate_P
 import importlib
 
 import jax.numpy as jnp
 
-@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
-def test_EvalRegQ_shape(module_name):
-    key = jax.random.PRNGKey(0)
-    module = importlib.import_module(f"envs.{module_name}")
-    cmdp = module.create_cmdp(key)
-    uni_policy = jnp.ones((cmdp.H, cmdp.S, cmdp.A)) / cmdp.A
-    Q = EvalRegQ(uni_policy, cmdp.rew, cmdp.P, 0.1)
-    assert Q.shape == (cmdp.H, cmdp.S, cmdp.A)
-
 
 @pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 def test_compare_uni_and_greedy_Q_values(module_name):
+    # Test if uniform policy Q values are less than or equal to greedy Q values
+
     key = jax.random.PRNGKey(0)
     module = importlib.import_module(f"envs.{module_name}")
     cmdp = module.create_cmdp(key)
     uni_policy = jnp.ones((cmdp.H, cmdp.S, cmdp.A)) / cmdp.A
     Q_uni = EvalRegQ(uni_policy, cmdp.utility, cmdp.P, 0.0)
+    assert Q_uni.shape == (cmdp.H, cmdp.S, cmdp.A)
     Q_greedy = compute_greedy_Q_utility(cmdp)
     assert jnp.all(Q_uni <= Q_greedy)
 
 
-
 @pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 def test_EvalRegQ_regularization_effect(module_name):
+    # Test if EvalRegQ with regularization gives larger Q values than without regularization
+
     key = jax.random.PRNGKey(0)
     module = importlib.import_module(f"envs.{module_name}")
     cmdp = module.create_cmdp(key)
@@ -54,6 +50,8 @@ def test_EvalRegQ_regularization_effect(module_name):
 
 @pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 def test_EvalRegQ_threshold_effect(module_name):
+    # Test if EvalRegQ with different threshold coefficients gives smaller Q values
+
     key = jax.random.PRNGKey(0)
     module = importlib.import_module(f"envs.{module_name}")
     cmdp = module.create_cmdp(key)
@@ -74,32 +72,22 @@ def test_compute_policy_matrix_shape(module_name):
 
 
 @pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
-def test_compute_occupancy_measure_shape(module_name):
+def test_compute_occupancy_measure(module_name):
+    # Test if compute_occupancy_measure returns a valid occupancy measure
+
     key = jax.random.PRNGKey(0)
     module = importlib.import_module(f"envs.{module_name}")
     cmdp = module.create_cmdp(key)
     policy = jnp.ones((cmdp.H, cmdp.S, cmdp.A)) / cmdp.A
     occ = compute_occupancy_measure(cmdp, policy)
     assert occ.shape == (cmdp.H, cmdp.S, cmdp.A)
-
-
-@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
-def test_compute_occupancy_measure_nonnegative(module_name):
-    key = jax.random.PRNGKey(0)
-    module = importlib.import_module(f"envs.{module_name}")
-    cmdp = module.create_cmdp(key)
-    policy = jnp.ones((cmdp.H, cmdp.S, cmdp.A)) / cmdp.A
-    occ = compute_occupancy_measure(cmdp, policy)
     assert jnp.all(occ >= 0)
 
+    # The sum of occupancy at h=0 should match the initial distribution
+    occ0_sum = occ[0].sum()
+    init_sum = cmdp.init_dist.sum() if hasattr(cmdp, "init_dist") else 1.0
+    np.testing.assert_allclose(float(occ0_sum), float(init_sum), rtol=1e-5)
 
-@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
-def test_compute_occupancy_measure_sum(module_name):
-    key = jax.random.PRNGKey(0)
-    module = importlib.import_module(f"envs.{module_name}")
-    cmdp = module.create_cmdp(key)
-    policy = jnp.ones((cmdp.H, cmdp.S, cmdp.A)) / cmdp.A
-    occ = compute_occupancy_measure(cmdp, policy)
     # The sum of occupancy at each time step should equal to 1
     for h in range(cmdp.H):
         occ_sum = occ[h].sum()
@@ -107,20 +95,8 @@ def test_compute_occupancy_measure_sum(module_name):
 
 
 @pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
-def test_compute_occupancy_measure_sum_conservation(module_name):
-    key = jax.random.PRNGKey(0)
-    module = importlib.import_module(f"envs.{module_name}")
-    cmdp = module.create_cmdp(key)
-    policy = jnp.ones((cmdp.H, cmdp.S, cmdp.A)) / cmdp.A
-    occ = compute_occupancy_measure(cmdp, policy)
-    # The sum of occupancy at h=0 should match the initial distribution
-    occ0_sum = occ[0].sum()
-    init_sum = cmdp.init_dist.sum() if hasattr(cmdp, "init_dist") else 1.0
-    np.testing.assert_allclose(float(occ0_sum), float(init_sum), rtol=1e-5)
-
-
-@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 def test_compute_occupancy_measure_policy_effect(module_name):
+    # Test if different policies yield different occupancy measures
     key = jax.random.PRNGKey(0)
     module = importlib.import_module(f"envs.{module_name}")
     cmdp = module.create_cmdp(key)
@@ -150,6 +126,8 @@ def test_set_cmdp_info(module_name, seed):
 @pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 @pytest.mark.parametrize("seed", [123, 331, 544, 803, 999, 1911])
 def test_compute_optimal_rew_util(module_name, seed):
+    # Test if compute_optimal_rew_util returns a value closed to the optimal reward and utility
+
     def compute_optimal_rew_util_LP(cmdp):
         H, S, A = cmdp.rew.shape
         B = np.zeros((H, S, A, H, S, A))
@@ -185,53 +163,34 @@ def test_compute_optimal_rew_util(module_name, seed):
 
 
 @pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
-@pytest.mark.parametrize("seed", [0, 1, 42, 123, 999])
-def test_deploy_policy_episode(module_name, seed):
-    key = jax.random.PRNGKey(seed)
-    module = importlib.import_module(f"envs.{module_name}")
-    cmdp = module.create_cmdp(key)
-    policy = jnp.ones((cmdp.H, cmdp.S, cmdp.A)) / cmdp.A
-
-    key, subkey = jax.random.split(key)
-    _, trajectory = deploy_policy_episode(cmdp, subkey, policy)
-
-    assert trajectory.shape == (cmdp.H, 2)
-
-
-@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 @pytest.mark.parametrize("seed1, seed2", [(0, 1), (42, 123), (999, 1000)])
 def test_deploy_policy_episode_randomness(module_name, seed1, seed2):
+    # Test if deploying the same policy with different seeds gives different trajectories
     key1 = jax.random.PRNGKey(seed1)
     key2 = jax.random.PRNGKey(seed2)
     module = importlib.import_module(f"envs.{module_name}")
     cmdp = module.create_cmdp(key1)
     policy = jnp.ones((cmdp.H, cmdp.S, cmdp.A)) / cmdp.A
 
-    _, traj1 = deploy_policy_episode(cmdp, key1, policy)
-    _, traj2 = deploy_policy_episode(cmdp, key2, policy)
 
     # With different seeds, trajectories should differ
+    _, traj1 = deploy_policy_episode(cmdp, key1, policy)
+    _, traj2 = deploy_policy_episode(cmdp, key2, policy)
+    assert traj1.shape == (cmdp.H, 2)
+    assert traj2.shape == (cmdp.H, 2)
     assert not jnp.allclose(traj1, traj2), "Trajectories should differ for different seeds"
 
-
-@pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
-def test_deploy_policy_episode_repeatability(module_name):
-    seed = 12345
-    key = jax.random.PRNGKey(seed)
-    module = importlib.import_module(f"envs.{module_name}")
-    cmdp = module.create_cmdp(key)
-    policy = jnp.ones((cmdp.H, cmdp.S, cmdp.A)) / cmdp.A
-
+    key = jax.random.PRNGKey(0)
+    # With same seed and same policy, trajectories should be identical
     _, traj1 = deploy_policy_episode(cmdp, key, policy)
     _, traj2 = deploy_policy_episode(cmdp, key, policy)
-
-    # With same seed and same policy, trajectories should be identical
     assert jnp.allclose(traj1, traj2), "Trajectories should be identical for same seed and policy"
 
 
 @pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 @pytest.mark.parametrize("seed", [0, 1, 42, 123, 999])
 def test_sample_and_compute_regret(module_name, seed):
+    # Test if sample_and_compute_regret returns valid regret values
     key = jax.random.PRNGKey(seed)
     module = importlib.import_module(f"envs.{module_name}")
     cmdp = module.create_cmdp(key)
@@ -253,7 +212,6 @@ def test_sample_and_compute_regret(module_name, seed):
 
 @pytest.mark.parametrize("seed", [0, 1, 42, 123, 999])
 def test_Sherman_Morrison_update_H(seed):
-    # Test Sherman_Morrison_update_H for correctness
     H = 3
     d = 2
     key = jax.random.PRNGKey(seed)
@@ -276,6 +234,7 @@ def test_Sherman_Morrison_update_H(seed):
 @pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 @pytest.mark.parametrize("seed", [0, 1, 42, 123, 999])
 def test_compute_bonus_shape_and_nonnegative(module_name, seed):
+    # Test if compute_bonus returns a bonus with correct shape and non-negative values
     key = jax.random.PRNGKey(seed)
     module = importlib.import_module(f"envs.{module_name}")
     cmdp = module.create_cmdp(key)
@@ -294,6 +253,7 @@ def test_compute_bonus_shape_and_nonnegative(module_name, seed):
 @pytest.mark.parametrize("module_name", ["tabular", "linear"])
 @pytest.mark.parametrize("seed", [0, 1, 42, 123, 999])
 def test_update_ephi_sum_and_estimate_P(module_name, seed):
+    # Test if update_ephi_sum_and_estimate_P accurately estimates the transition probabilities P
 
     H, S, A, d = 3, 3, 2, 2
 
@@ -323,6 +283,7 @@ def test_update_ephi_sum_and_estimate_P(module_name, seed):
 @pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])
 @pytest.mark.parametrize("seed", [0, 1, 42, 123, 999])
 def test_compute_bonus_decrease(module_name, seed):
+    # Test if the bonus function decreases over iterations
     key = jax.random.PRNGKey(seed)
     module = importlib.import_module(f"envs.{module_name}")
     cmdp = module.create_cmdp(key)
@@ -341,3 +302,69 @@ def test_compute_bonus_decrease(module_name, seed):
         bonus = compute_bonus(Lambda_inv, cmdp)
 
     assert jnp.all(bonus <= bonus_initial), "Bonus should decrease"
+
+
+@jax.jit
+def compute_bonus_Q(bonus: jnp.ndarray, func: jnp.ndarray, P: jnp.ndarray, pol: jnp.ndarray) -> jnp.ndarray:
+    H, S, A = bonus.shape
+
+    def backup(i, Q):
+        h = H - i - 1
+
+        thresh = H - h
+        Q_h = compute_Q_h(Q[h+1], pol[h+1], bonus[h], func[h], P[h], 0.0, thresh)
+        Q = Q.at[h].set(Q_h)
+        return Q
+
+    Q = jnp.zeros((H+1, S, A))
+    Q = jax.lax.fori_loop(0, H, backup, Q)
+    return Q[:-1]
+
+
+@pytest.mark.parametrize("seed", [0, 1, 42])
+def test_confidence_bound_include_true_value(seed):
+    # Test if the confidence bound includes the true value
+
+    key = jax.random.PRNGKey(seed)
+    module = importlib.import_module("envs.linear")
+    cmdp = module.create_cmdp(key, S=5, A=5, d=2, H=3)
+    cmdp = set_cmdp_info(cmdp)
+    H, S, A, d = cmdp.H, cmdp.S, cmdp.A, cmdp.d
+
+    policy = jax.random.uniform(key, (H, S, A))
+    policy = policy / policy.sum(axis=-1, keepdims=True)
+
+    for func in [cmdp.rew, cmdp.utility]:
+        Lambda_inv = jnp.tile(jnp.eye(d), (H, 1, 1))
+        ephi_sum = jnp.zeros((H, S, d))
+
+        policy = jnp.ones((cmdp.H, cmdp.S, cmdp.A)) / cmdp.A
+        true_Q = EvalRegQ(policy, func, cmdp.P, 0.0)
+        true_ret = ((true_Q * policy)[0].sum(axis=-1) * cmdp.init_dist).sum().item()
+        Cr, Cu = d * H * 10, d * H * 10
+
+        ret_up_down_gap = []
+        for _ in range(1000):
+            key, subkey = jax.random.split(key)
+            traj = sample_and_compute_regret(key, cmdp, policy)[1]
+            Phi = cmdp.phi[traj[:, 0]]  # (H x d)
+            Lambda_inv = Sherman_Morrison_update_H(Lambda_inv, Phi)
+            bonus = compute_bonus(Lambda_inv, cmdp)
+
+            ephi_sum, est_P = update_ephi_sum_and_estimate_P(ephi_sum, Lambda_inv, traj, cmdp)
+
+            func_up = func + Cr * bonus
+            func_down = func - Cu * bonus
+
+            Q_up = compute_bonus_Q(Cr * bonus, func_up, est_P, policy)
+            up_ret = ((Q_up * policy)[0].sum(axis=-1) * cmdp.init_dist).sum().item()
+            Q_down = compute_bonus_Q(-Cu * bonus, func_down, est_P, policy)
+            down_ret = ((Q_down * policy)[0].sum(axis=-1) * cmdp.init_dist).sum().item()
+
+            assert up_ret >= true_ret, "Optimistic return should be greater than or equal to true return"
+            assert down_ret <= true_ret, "Pessimistic return should be less than or equal to true return"
+
+            # check if the bonus range is decreasing
+            ret_up_down_gap.append(up_ret - down_ret)
+
+        assert ret_up_down_gap[-1] < ret_up_down_gap[0], "Bonus range should decrease over iterations"

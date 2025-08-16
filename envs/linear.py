@@ -14,11 +14,11 @@ def create_cmdp(key: PRNGKey, S: int=5, A: int=3, d: int=2, H: int=8, const_scal
     A_set = jnp.arange(A)
 
     # create a linear CMDP based on https://arxiv.org/pdf/2106.06239#page=10.27
-    phi = jax.random.dirichlet(key=key, alpha=jnp.array([0.3] * d), shape=(S*A))
+    phi = jax.random.dirichlet(key=key, alpha=jnp.array([0.1] * d), shape=(S*A))
     phi = phi.reshape(S*A, d)
     key, _ = jax.random.split(key)
 
-    mu = jax.random.dirichlet(key=key, alpha=jnp.array([0.3] * S), shape=(H*d))
+    mu = jax.random.dirichlet(key=key, alpha=jnp.array([0.1] * S), shape=(H*d))
     mu = mu.reshape(H, d, S)
     key, _ = jax.random.split(key)
 

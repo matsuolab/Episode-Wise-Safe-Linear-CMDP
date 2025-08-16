@@ -5,7 +5,7 @@ from envs.cmdp import CMDP
 import numpy as np
 
 
-buff = 10  # buffer size
+buff = 15  # buffer size
 S, A = buff+1, 2  # state and action space sizes
 d = S * A
 H = 10 

@@ -20,14 +20,15 @@ def create_cmdp(key: PRNGKey, S: int=10, A: int=3, H: int=5, const_scale: float=
     # create reward function
     rew = jnp.ones((H, S, A))
     key, _ = jax.random.split(key)
-    zero_mask = jax.random.bernoulli(key, p=0.2, shape=rew.shape)
+    zero_mask = jax.random.bernoulli(key, p=0.1, shape=rew.shape)
     rew = rew * zero_mask
 
     # create reward function for constraints
     utility = jnp.ones((H, S, A))
     key, _ = jax.random.split(key)
-    zero_mask = jax.random.bernoulli(key, p=0.2, shape=utility.shape)
+    zero_mask = jax.random.bernoulli(key, p=0.1, shape=utility.shape)
     utility = utility * zero_mask
+    # utility = 1 - rew
 
     # create transition probability kernel
     key, _ = jax.random.split(key)

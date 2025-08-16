@@ -225,7 +225,7 @@ def sample_and_compute_regret(key, cmdp: CMDP, policy):
     total_rew = ((Q_rew * policy)[0].sum(axis=-1) * init_dist).sum()
     total_utility = ((Q_utility * policy)[0].sum(axis=-1) * init_dist).sum()
     
-    err_rew = cmdp.optimal_ret - total_rew
+    err_rew = jnp.maximum(cmdp.optimal_ret - total_rew, 0)
     err_vio = jnp.maximum(cmdp.const - total_utility, 0)
     return key, traj, err_rew, err_vio
 

@@ -7,39 +7,29 @@ from itertools import product
 
 
 # @partial(jax.jit, static_argnames=('solver'))
-def compute_optimal_policy_LP(cmdp: CMDP, solver: r2HPDHG):
+def compute_extended_optimal_policy(cmdp: CMDP, bonus: jnp.ndarray, solver: r2HPDHG):
     H, S, A = cmdp.rew.shape
-    B = jnp.zeros((H, S, A, H, S, A))
+    B = jnp.zeros((H, S, A, S, H, S, A, S))
 
-    cmdp.P.reshape()
-    
     # Initial occupancy constraints
-    B0 = jnp.eye(S)[:, None]
-    B0 = jnp.repeat(B0, A, axis=1)
-    B = B.at[0].set(B0)
+    B0 = jnp.eye(S)[:, :, None]  # (S, S, 1)
+    B0 = jnp.repeat(B0, A**2, axis=-1).reshape(S, S, A, A)
+    B0 = jnp.swapaxes(B0, 1, 2)
 
-    # Flow conservation constraints
-    for h in range(1, H):
-        for s, a in product(range(S), range(A)):
-            B = B.at[h, s, a, h, s].set(1)
-            B = B.at[h, s, a, h-1].set(-cmdp.P[h-1, :, :, s])
+    B = B.at[0, :, :, 0, :, :].set(B0)
 
-    # Initial occupancy constraints (h=0)
-    B = B.at[0, :, :, 0, :].set(jnp.eye(S)[None, :, :])
+    # =====
+    Bh_h_sum = jnp.eye((H-1)*S)[:, :, None]  # (H-1*S, H-1*S, 1)
+    Bh_h_sum = jnp.repeat(Bh_h_sum, A**2, axis=-1).reshape((H-1), S, (H-1), S, A, A)
+    Bh_h_sum = jnp.transpose(Bh_h_sum, axes=(0, 1, 4, 2, 3, 5))
+    B = B.at[1:, :, :, 1:, :, :].set(Bh_h_sum)
 
-    # Flow conservation constraints (h=1,...,H-1)
-    # For each h, s, a, set B[h, s, a, h, s] = 1
-    B = B.at[1:, :, :, 1:, :].set(jnp.eye(S)[None, :, :])
-    # For each h, s, a, set B[h, s, a, h-1, :] = -cmdp.P[h-1, :, :, s]
-    # cmdp.P shape: (H, S, A, S)
-    # We want: B[h, s, a, h-1, :] = -cmdp.P[h-1, :, :, s]
-    # So we need to broadcast over h, s, a
-    idx_h = jnp.arange(1, H)
-    B = B.at[idx_h[:, None, None], :, :, (idx_h - 1)[:, None, None], :].add(
-        -cmdp.P[idx_h - 1].transpose(1, 2, 0)
-    )
-
-
+    # indices for h and (h-1)
+    idx = jnp.arange(1, H)                       # shape (H-1,)
+    rhs = -cmdp.P[:-1].transpose(0, 3, 1, 2)         # (H-1, S, S, A)
+    rhs = jnp.broadcast_to(rhs[:, :, None, :, :], (H-1, S, A, S, A))  # (H-1, S, A, S, A)
+    B = B.at[idx, :, :, idx - 1, :, :].set(rhs)
+    # =====
 
     B = B.reshape((H*S*A, H*S*A))
     mu = jnp.repeat(cmdp.init_dist[:, None], A, axis=1).reshape(-1)
@@ -48,12 +38,10 @@ def compute_optimal_policy_LP(cmdp: CMDP, solver: r2HPDHG):
     u = jnp.array([cmdp.const])
     r = -cmdp.rew.reshape(-1)
 
-    lp = create_lp(r, B, b, -U, -u, l=0, u=1.0)
+    lp = create_lp(r, B, b, U, u, l=0, u=1.0)
     result = solver.optimize(lp)
     d_arr = result[0].reshape(H, S, A)
-
-    nonneg_mask = d_arr >= 0
-    d_arr = jnp.where(nonneg_mask, d_arr, 0.0)
+    d_arr = jnp.maximum(d_arr, 0.0)
 
     nonvisit_mask = d_arr.sum(axis=2, keepdims=True) == 0
     d_arr = jnp.where(nonvisit_mask, jnp.ones((H, S, A)) / A, d_arr)

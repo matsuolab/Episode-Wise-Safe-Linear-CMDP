@@ -1,6 +1,3 @@
-from scipy.optimize import linprog
-from itertools import product
-from functools import partial
 from envs.cmdp import CMDP
 from jax.random import PRNGKey
 import jax

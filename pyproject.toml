@@ -9,7 +9,10 @@ dependencies = [
     "jax>=0.6.0",
     "jupyter>=1.1.1",
     "matplotlib>=3.10.1",
+    "mpax>=0.2.2",
     "notebook>=7.4.1",
     "numpy>=2.2.5",
+    "pytest>=8.4.1",
     "ray>=2.45.0",
+    "tqdm>=4.67.1",
 ]

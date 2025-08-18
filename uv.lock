@@ -1,10 +1,14 @@
 version = 1
 requires-python = ">=3.10"
 resolution-markers = [
-    "python_full_version >= '3.13'",
-    "python_full_version == '3.12.*'",
-    "python_full_version == '3.11.*'",
-    "python_full_version < '3.11'",
+    "python_full_version >= '3.13' and platform_machine == 'x86_64' and sys_platform == 'darwin'",
+    "(python_full_version >= '3.13' and platform_machine != 'x86_64') or (python_full_version >= '3.13' and sys_platform != 'darwin')",
+    "python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'darwin'",
+    "(python_full_version == '3.12.*' and platform_machine != 'x86_64') or (python_full_version == '3.12.*' and sys_platform != 'darwin')",
+    "python_full_version == '3.11.*' and platform_machine == 'x86_64' and sys_platform == 'darwin'",
+    "(python_full_version == '3.11.*' and platform_machine != 'x86_64') or (python_full_version == '3.11.*' and sys_platform != 'darwin')",
+    "python_full_version < '3.11' and platform_machine == 'x86_64' and sys_platform == 'darwin'",
+    "(python_full_version < '3.11' and platform_machine != 'x86_64') or (python_full_version < '3.11' and sys_platform != 'darwin')",
 ]
 
 [[package]]
@@ -585,6 +589,15 @@ wheels = [
 ]
 
 [[package]]
+name = "iniconfig"
+version = "2.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f2/97/ebf4da567aa6827c909642694d71c9fcf53e5b504f2d96afea02718862f3/iniconfig-2.1.0.tar.gz", hash = "sha256:3abbd2e30b36733fee78f9c7f7308f2d0050e88f0087fd25c2645f63c773e1c7", size = 4793 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2c/e1/e6716421ea10d38022b952c159d5161ca1193197fb744506875fbb87ea7b/iniconfig-2.1.0-py3-none-any.whl", hash = "sha256:9deba5723312380e77435581c6bf4935c94cbfab9b1ed33ef8d238ea168eb760", size = 6050 },
+]
+
+[[package]]
 name = "ipykernel"
 version = "6.29.5"
 source = { registry = "https://pypi.org/simple" }
@@ -614,7 +627,8 @@ name = "ipython"
 version = "8.36.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version < '3.11'",
+    "python_full_version < '3.11' and platform_machine == 'x86_64' and sys_platform == 'darwin'",
+    "(python_full_version < '3.11' and platform_machine != 'x86_64') or (python_full_version < '3.11' and sys_platform != 'darwin')",
 ]
 dependencies = [
     { name = "colorama", marker = "python_full_version < '3.11' and sys_platform == 'win32'" },
@@ -639,9 +653,12 @@ name = "ipython"
 version = "9.2.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.13'",
-    "python_full_version == '3.12.*'",
-    "python_full_version == '3.11.*'",
+    "python_full_version >= '3.13' and platform_machine == 'x86_64' and sys_platform == 'darwin'",
+    "(python_full_version >= '3.13' and platform_machine != 'x86_64') or (python_full_version >= '3.13' and sys_platform != 'darwin')",
+    "python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'darwin'",
+    "(python_full_version == '3.12.*' and platform_machine != 'x86_64') or (python_full_version == '3.12.*' and sys_platform != 'darwin')",
+    "python_full_version == '3.11.*' and platform_machine == 'x86_64' and sys_platform == 'darwin'",
+    "(python_full_version == '3.11.*' and platform_machine != 'x86_64') or (python_full_version == '3.11.*' and sys_platform != 'darwin')",
 ]
 dependencies = [
     { name = "colorama", marker = "python_full_version >= '3.11' and sys_platform == 'win32'" },
@@ -944,7 +961,7 @@ dependencies = [
     { name = "overrides" },
     { name = "packaging" },
     { name = "prometheus-client" },
-    { name = "pywinpty", marker = "os_name == 'nt'" },
+    { name = "pywinpty", marker = "(os_name == 'nt' and platform_machine != 'x86_64') or (os_name == 'nt' and sys_platform != 'darwin')" },
     { name = "pyzmq" },
     { name = "send2trash" },
     { name = "terminado" },
@@ -962,7 +979,7 @@ name = "jupyter-server-terminals"
 version = "0.5.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pywinpty", marker = "os_name == 'nt'" },
+    { name = "pywinpty", marker = "(os_name == 'nt' and platform_machine != 'x86_64') or (os_name == 'nt' and sys_platform != 'darwin')" },
     { name = "terminado" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/fc/d5/562469734f476159e99a55426d697cbf8e7eb5efe89fb0e0b4f83a3d3459/jupyter_server_terminals-0.5.3.tar.gz", hash = "sha256:5ae0295167220e9ace0edcfdb212afd2b01ee8d179fe6f23c899590e9b8a5269", size = 31430 }
@@ -1127,9 +1144,13 @@ dependencies = [
     { name = "jax" },
     { name = "jupyter" },
     { name = "matplotlib" },
+    { name = "mpax", version = "0.2.2", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+    { name = "mpax", version = "0.2.4", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
     { name = "notebook" },
     { name = "numpy" },
+    { name = "pytest" },
     { name = "ray" },
+    { name = "tqdm" },
 ]
 
 [package.metadata]
@@ -1138,9 +1159,12 @@ requires-dist = [
     { name = "jax", specifier = ">=0.6.0" },
     { name = "jupyter", specifier = ">=1.1.1" },
     { name = "matplotlib", specifier = ">=3.10.1" },
+    { name = "mpax", specifier = ">=0.2.2" },
     { name = "notebook", specifier = ">=7.4.1" },
     { name = "numpy", specifier = ">=2.2.5" },
+    { name = "pytest", specifier = ">=8.4.1" },
     { name = "ray", specifier = ">=2.45.0" },
+    { name = "tqdm", specifier = ">=4.67.1" },
 ]
 
 [[package]]
@@ -1305,6 +1329,46 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/52/38/703169100fdde27957f061d4d0ea3e00525775a09acaccf7e655d9609d55/ml_dtypes-0.5.1-cp313-cp313t-macosx_10_13_universal2.whl", hash = "sha256:05f23447a1c20ddf4dc7c2c661aa9ed93fcb2658f1017c204d1e758714dc28a8", size = 693043 },
     { url = "https://files.pythonhosted.org/packages/28/ff/4e234c9c23e0d456f5da5a326c103bf890c746d93351524d987e41f438b3/ml_dtypes-0.5.1-cp313-cp313t-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:1b7fbe5571fdf28fd3aaab3ef4aafc847de9ebf263be959958c1ca58ec8eadf5", size = 4903946 },
     { url = "https://files.pythonhosted.org/packages/b7/45/c1a1ccfdd02bc4173ca0f4a2d327683a27df85797b885eb1da1ca325b85c/ml_dtypes-0.5.1-cp313-cp313t-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d13755f8e8445b3870114e5b6240facaa7cb0c3361e54beba3e07fa912a6e12b", size = 5052731 },
+]
+
+[[package]]
+name = "mpax"
+version = "0.2.2"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.13' and platform_machine == 'x86_64' and sys_platform == 'darwin'",
+    "python_full_version == '3.12.*' and platform_machine == 'x86_64' and sys_platform == 'darwin'",
+    "python_full_version == '3.11.*' and platform_machine == 'x86_64' and sys_platform == 'darwin'",
+    "python_full_version < '3.11' and platform_machine == 'x86_64' and sys_platform == 'darwin'",
+]
+dependencies = [
+    { name = "chex", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+    { name = "jax", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+    { name = "numpy", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/34/06/e07cd66991a5a7aa31bfa02b87ae5a091e28f2e28a2568f28f4f14988223/mpax-0.2.2.tar.gz", hash = "sha256:0a2b8fb9e8bb23fc6746fbf8dfdd0cbac1d3e0e646fe59fb1d3cce5e217f1cd5", size = 45144 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a5/0f/e6374394a690f904473380fa008a690a61378bf674df9103580c1146feec/mpax-0.2.2-py3-none-any.whl", hash = "sha256:a89f263620615f7ce94083ab38209db7b780fe3ce20d817f569fb1cc46d56862", size = 48489 },
+]
+
+[[package]]
+name = "mpax"
+version = "0.2.4"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "(python_full_version >= '3.13' and platform_machine != 'x86_64') or (python_full_version >= '3.13' and sys_platform != 'darwin')",
+    "(python_full_version == '3.12.*' and platform_machine != 'x86_64') or (python_full_version == '3.12.*' and sys_platform != 'darwin')",
+    "(python_full_version == '3.11.*' and platform_machine != 'x86_64') or (python_full_version == '3.11.*' and sys_platform != 'darwin')",
+    "(python_full_version < '3.11' and platform_machine != 'x86_64') or (python_full_version < '3.11' and sys_platform != 'darwin')",
+]
+dependencies = [
+    { name = "chex", marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
+    { name = "jax", marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
+    { name = "numpy", marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ed/0d/dc4ba58a64b2c104bae09383c9e17eca052f24410a0d9155c75ff0d97837/mpax-0.2.4.tar.gz", hash = "sha256:b34f11168d5fd88075cd0f7082b94f58ff36ae0508bea6bb5ca908d3b08b0922", size = 45282 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/43/84/2681ace1aaebf78762f46ebab54ff3d603aee39817cd68c5a19f699165f5/mpax-0.2.4-py3-none-any.whl", hash = "sha256:85a3df11f3ba7588b0f51990754db880f2ccd73f15081d1fddc59798abad191d", size = 48562 },
 ]
 
 [[package]]
@@ -1657,6 +1721,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pluggy"
+version = "1.6.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe6ef3fa267035b518369d9511ffab804f839851d2779/pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3", size = 69412 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746", size = 20538 },
+]
+
+[[package]]
 name = "prometheus-client"
 version = "0.21.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1749,6 +1822,24 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/bb/22/f1129e69d94ffff626bdb5c835506b3a5b4f3d070f17ea295e12c2c6f60f/pyparsing-3.2.3.tar.gz", hash = "sha256:b9c13f1ab8b3b542f72e28f634bad4de758ab3ce4546e4301970ad6fa77c38be", size = 1088608 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl", hash = "sha256:a749938e02d6fd0b59b356ca504a24982314bb090c383e3cf201c95ef7e2bfcf", size = 111120 },
+]
+
+[[package]]
+name = "pytest"
+version = "8.4.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "exceptiongroup", marker = "python_full_version < '3.11'" },
+    { name = "iniconfig" },
+    { name = "packaging" },
+    { name = "pluggy" },
+    { name = "pygments" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/08/ba/45911d754e8eba3d5a841a5ce61a65a685ff1798421ac054f85aa8747dfb/pytest-8.4.1.tar.gz", hash = "sha256:7c67fd69174877359ed9371ec3af8a3d2b04741818c51e5e99cc1742251fa93c", size = 1517714 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/29/16/c8a903f4c4dffe7a12843191437d7cd8e32751d5de349d45d3fe69544e87/pytest-8.4.1-py3-none-any.whl", hash = "sha256:539c70ba6fcead8e78eebbf1115e8b589e7565830d7d006a8723f19ac8a0afb7", size = 365474 },
 ]
 
 [[package]]
@@ -2224,7 +2315,7 @@ version = "0.18.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ptyprocess", marker = "os_name != 'nt'" },
-    { name = "pywinpty", marker = "os_name == 'nt'" },
+    { name = "pywinpty", marker = "(os_name == 'nt' and platform_machine != 'x86_64') or (os_name == 'nt' and sys_platform != 'darwin')" },
     { name = "tornado" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/8a/11/965c6fd8e5cc254f1fe142d547387da17a8ebfd75a3455f637c663fb38a0/terminado-0.18.1.tar.gz", hash = "sha256:de09f2c4b85de4765f7714688fff57d3e75bad1f909b589fde880460c753fd2e", size = 32701 }
@@ -2308,6 +2399,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/2b/ae/c1b22d4524b0e10da2f29a176fb2890386f7bd1f63aacf186444873a88a0/tornado-6.4.2-cp38-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:932d195ca9015956fa502c6b56af9eb06106140d844a335590c1ec7f5277d10c", size = 437261 },
     { url = "https://files.pythonhosted.org/packages/b5/25/36dbd49ab6d179bcfc4c6c093a51795a4f3bed380543a8242ac3517a1751/tornado-6.4.2-cp38-abi3-win32.whl", hash = "sha256:2876cef82e6c5978fde1e0d5b1f919d756968d5b4282418f3146b79b58556482", size = 438463 },
     { url = "https://files.pythonhosted.org/packages/61/cc/58b1adeb1bb46228442081e746fcdbc4540905c87e8add7c277540934edb/tornado-6.4.2-cp38-abi3-win_amd64.whl", hash = "sha256:908b71bf3ff37d81073356a5fadcc660eb10c1476ee6e2725588626ce7e5ca38", size = 438907 },
+]
+
+[[package]]
+name = "tqdm"
+version = "4.67.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a8/4b/29b4ef32e036bb34e4ab51796dd745cdba7ed47ad142a9f4a1eb8e0c744d/tqdm-4.67.1.tar.gz", hash = "sha256:f8aef9c52c08c13a65f30ea34f4e5aac3fd1a34959879d7e59e63027286627f2", size = 169737 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d0/30/dc54f88dd4a2b5dc8a0279bdd7270e735851848b762aeb1c1184ed1f6b14/tqdm-4.67.1-py3-none-any.whl", hash = "sha256:26445eca388f82e72884e0d580d5464cd801a3ea01e63e5601bdff9ba6a48de2", size = 78540 },
 ]
 
 [[package]]

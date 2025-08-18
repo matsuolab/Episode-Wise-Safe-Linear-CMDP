@@ -5,10 +5,10 @@ from envs.cmdp import CMDP
 import numpy as np
 
 
-buff = 15  # buffer size
+buff = 5  # buffer size
 S, A = buff+1, 2  # state and action space sizes
 d = S * A
-H = 10 
+H = 4 
 const_scale = 0.6
 
 

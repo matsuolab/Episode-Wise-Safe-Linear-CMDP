@@ -14,6 +14,7 @@ from utils import deploy_policy_episode
 from utils import sample_and_compute_regret
 from utils import Sherman_Morrison_update_H
 from utils import compute_bonus
+from utils import add_count_HSAS
 from utils import compute_Q_h
 from utils import update_ephi_sum_and_estimate_P
 import importlib
@@ -185,6 +186,33 @@ def test_deploy_policy_episode_randomness(module_name, seed1, seed2):
     _, traj1 = deploy_policy_episode(cmdp, key, policy)
     _, traj2 = deploy_policy_episode(cmdp, key, policy)
     assert jnp.allclose(traj1, traj2), "Trajectories should be identical for same seed and policy"
+
+
+def test_add_count_HSAS():
+    # Test if add_count_HSAS correctly counts how many times each (h, s, a, s') pair appears in the trajectory
+
+    H, S, A = 2, 3, 2
+    count_HSAS = jnp.zeros((H, S, A, S), dtype=jnp.int32)
+
+    # Example trajectory: Hx(sa, s') array
+    # (s, a, s') = [(1, 0, 1), (2, 1, 2)]
+    traj = jnp.array([[1*A+0, 1], [2*A+1, 2]])
+    count_HSAS = add_count_HSAS(traj, count_HSAS)
+
+    expected_count = jnp.zeros((H, S, A, S), dtype=jnp.int32)
+    expected_count = expected_count.at[0, 1, 0, 1].add(1)
+    expected_count = expected_count.at[1, 2, 1, 2].add(1)
+
+    assert jnp.array_equal(count_HSAS, expected_count), "Count HSAS does not match expected values"
+
+    # Add trajectory again
+    count_HSAS = add_count_HSAS(traj, count_HSAS)
+    expected_count = expected_count.at[0, 1, 0, 1].add(1)
+    expected_count = expected_count.at[1, 2, 1, 2].add(1)
+
+    assert jnp.array_equal(count_HSAS, expected_count), "Count HSAS does not match expected values"
+
+
 
 
 @pytest.mark.parametrize("module_name", ["tabular", "streaming", "linear"])

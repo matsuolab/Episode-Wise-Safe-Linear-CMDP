@@ -1,4 +1,5 @@
 from mpax import create_lp, r2HPDHG
+from mpax.utils import TerminationStatus
 from envs.cmdp import CMDP
 import jax.numpy as jnp
 import jax
@@ -123,21 +124,35 @@ def build_lp_jax_sparse(C, mu, P, bonus, utility, const, dtype=jnp.float32):
     return c, A_bcoo, b, G_bcoo, hvec
 
 
-@jax.jit
-def compute_extended_optimal_policy(cmdp: CMDP, bonus: jnp.ndarray):
+def compute_extended_optimal_policy(cmdp: CMDP, bonus: jnp.ndarray, safe_policy: jnp.ndarray):
 
     c, A, b, G, h = build_lp_jax_sparse(-cmdp.rew, cmdp.init_dist, cmdp.P, bonus, cmdp.utility, cmdp.const)
 
     lp = create_lp(c, A, b, G, h, 0.0, 1.0)                                  # sparse default
-    solver = r2HPDHG(eps_abs=1e-3, eps_rel=1e-3)
+    solver = r2HPDHG(eps_abs=1e-3, eps_rel=1e-3, iteration_limit=10000)
     result = solver.optimize(lp)
 
-    H, S, A = cmdp.rew.shape
-    d_arr = jnp.asarray(result.primal_solution).reshape(H, S, A, S).sum(axis=-1)
-    d_arr = jnp.maximum(d_arr, 0.0)
-    d_arr = jnp.where(d_arr.sum(axis=-1, keepdims=True) > 0.0, d_arr, 1 / A)
+    def policy_from_result():
+        H, S, A = cmdp.rew.shape
+        d_arr = jnp.asarray(result.primal_solution).reshape(H, S, A, S).sum(axis=-1)
+        d_arr = jnp.maximum(d_arr, 0.0)
+        d_arr = jnp.where(d_arr.sum(axis=-1, keepdims=True) > 0.0, d_arr, 1 / A)
+        policy = d_arr / d_arr.sum(axis=-1, keepdims=True)
+        return policy
 
-    policy = d_arr / d_arr.sum(axis=-1, keepdims=True)
+    policy = jax.lax.cond(
+        result.termination_status == TerminationStatus.OPTIMAL,
+        policy_from_result,
+        lambda: safe_policy,  # uniform policy if infeasible
+    )
     return policy
 
+@jax.jit
+def compute_bonus_HSAS(count_HSAS):
+    H, S, A, _ = count_HSAS.shape
+    count_HSA = jnp.maximum(count_HSAS.sum(axis=-1, keepdims=True), 1)
+    P_approx = jnp.where(count_HSAS.sum(axis=-1, keepdims=True) > 0, count_HSAS / count_HSA, 1 / S)
+    Var = P_approx * (1 - P_approx)
+    bonus = (jnp.sqrt(Var / count_HSA) + 1 / count_HSA)
+    return bonus
 

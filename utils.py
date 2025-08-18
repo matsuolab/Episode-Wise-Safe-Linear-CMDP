@@ -206,13 +206,27 @@ def deploy_policy_episode(cmdp: CMDP, key: PRNGKey, policy: jnp.array):
 
 
 @jax.jit
+def add_count_HSAS(traj, count_HSAS):
+    """ Add the count in traj to the count_HSAS array
+    """
+
+    H, S, A, _ = count_HSAS.shape
+
+    @jax.vmap
+    def update_count(count_SAS, traj_h):
+        sa, ns = traj_h
+        s, a = sa // A, sa % A
+        count_SAS = count_SAS.at[s, a, ns].add(1)
+        return count_SAS
+
+    count_HSAS = update_count(count_HSAS, traj)
+    return count_HSAS
+
+
+@jax.jit
 def sample_and_compute_regret(key, cmdp: CMDP, policy):
     """Deploy a policy and compute the regret"""
     # sample data and update visitation counter
-    H, S, A, S = cmdp.P.shape
-
-    key, init_key = jax.random.split(key)
-    init_s = jax.random.choice(init_key, S, p=cmdp.init_dist)
     key, traj = deploy_policy_episode(cmdp, key, policy)
 
     # compute temporal regret
@@ -225,6 +239,7 @@ def sample_and_compute_regret(key, cmdp: CMDP, policy):
     err_rew = jnp.maximum(cmdp.optimal_ret - total_rew, 0)
     err_vio = jnp.maximum(cmdp.const - total_utility, 0)
     return key, traj, err_rew, err_vio
+
 
 
 @jax.vmap

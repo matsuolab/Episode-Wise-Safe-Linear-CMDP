@@ -29,10 +29,16 @@ def create_cmdp(key: PRNGKey, S: int=5, A: int=3, d: int=2, H: int=8, const_scal
     theta_r = jax.random.uniform(key=key, shape=(H, d))
     key, _ = jax.random.split(key)
     rew = jnp.einsum('hd,kd->hk', theta_r, phi).reshape(H, S, A)
+    rew_scale = 1 / rew.max()
+    theta_r = theta_r * rew_scale
+    rew = jnp.einsum('hd,kd->hk', theta_r, phi).reshape(H, S, A)
 
     # create reward function for constraints
     theta_u = jax.random.uniform(key, shape=(H, d))
     key, _ = jax.random.split(key)
+    utility = jnp.einsum('hd,kd->hk', theta_u, phi).reshape(H, S, A)
+    utility_scale = 1 / utility.max()
+    theta_u = theta_u * utility_scale
     utility = jnp.einsum('hd,kd->hk', theta_u, phi).reshape(H, S, A)
 
     # create initial distribution
